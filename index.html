@@ -3,480 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Importador de Dados - Sistema Recrutamento Renaux</title>
+    <title>Importador de Dados - Renaux</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .card { background: white; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 30px; margin-bottom: 20px; }
+        .section-title { font-size: 1.4em; color: #333; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+        
+        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; font-weight: 500; }
+        .alert-info { background: #e3f2fd; color: #1976d2; border-left: 4px solid #1976d2; }
+        .alert-success { background: #f1f8e9; color: #558b2f; border-left: 4px solid #558b2f; }
+        .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #c62828; }
+        
+        .upload-section { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 200px; border: 2px dashed #667eea; border-radius: 8px; cursor: pointer;
+            transition: all 0.3s ease; background: #f8f9ff; padding: 40px 20px; text-align: center;
         }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
+        .upload-section:hover { border-color: #764ba2; background: #f0f2ff; }
+        .upload-section.active { border-color: #4caf50; background: #f1f8f5; }
+        .upload-section input { display: none; }
+        .upload-icon { font-size: 3em; margin-bottom: 10px; }
+        .upload-section p { color: #666; margin: 5px 0; }
+        
+        .btn { 
+            padding: 12px 24px; border: none; border-radius: 6px; font-size: 1em; 
+            font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-block;
         }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #764ba2; transform: translateY(-2px); }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-secondary { background: #f0f0f0; color: #333; margin-left: 10px; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-success:hover { background: #45a049; }
+        
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9em; }
+        .table th { background: #667eea; color: white; padding: 10px; text-align: left; }
+        .table td { padding: 10px; border-bottom: 1px solid #eee; }
+        .table tr:hover { background: #f0f2ff; }
+        .table select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        
+        .progress-bar { width: 100%; height: 10px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s; }
+        .progress-text { text-align: center; font-weight: 600; margin-bottom: 20px; }
+        
+        .logs-container { background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.85em; max-height: 300px; overflow-y: auto; }
+        .log-entry { margin: 5px 0; padding: 5px 0; border-bottom: 1px solid #333; }
+        .log-entry.success { color: #00ff00; }
+        .log-entry.error { color: #ff4444; }
+        .log-entry.info { color: #4499ff; }
+        
+        .hidden { display: none; }
+        .status-connected { display: inline-block; padding: 8px 16px; background: #f1f8e9; color: #558b2f; border-radius: 4px; font-weight: 600; margin-bottom: 20px; border-left: 4px solid #558b2f; }
+        .status-error { display: inline-block; padding: 8px 16px; background: #ffebee; color: #c62828; border-radius: 4px; font-weight: 600; margin-bottom: 20px; border-left: 4px solid #c62828; }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .card {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 1.4em;
-            color: #333;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        /* Upload Section */
-        .upload-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px;
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f8f9ff;
-        }
-
-        .upload-section:hover {
-            border-color: #764ba2;
-            background: #f0f2ff;
-        }
-
-        .upload-section.active {
-            border-color: #4caf50;
-            background: #f1f8f5;
-        }
-
-        .upload-icon {
-            font-size: 3em;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .upload-section p {
-            color: #666;
-            margin: 5px 0;
-        }
-
-        .upload-section input[type="file"] {
-            display: none;
-        }
-
-        /* Buttons */
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #764ba2;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-primary:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-            margin-left: 10px;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #d32f2f;
-        }
-
-        .btn-success {
-            background: #4caf50;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #45a049;
-        }
-
-        /* Preview Section */
-        .preview-section {
-            display: none;
-        }
-
-        .preview-section.show {
-            display: block;
-        }
-
-        .file-info {
-            background: #f0f7ff;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-
-        .file-info p {
-            margin: 5px 0;
-            color: #333;
-        }
-
-        .file-info strong {
-            color: #667eea;
-        }
-
-        /* Mapping Table */
-        .mapping-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        .mapping-table th {
-            background: #f5f5f5;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #333;
-            border-bottom: 2px solid #ddd;
-        }
-
-        .mapping-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .mapping-table tr:hover {
-            background: #f9f9f9;
-        }
-
-        .mapping-table select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 0.95em;
-        }
-
-        .mapping-table select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-        }
-
-        /* Preview Data Table */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9em;
-            overflow-x: auto;
-            display: block;
-        }
-
-        .data-table th {
-            background: #667eea;
-            color: white;
-            padding: 10px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .data-table td {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .data-table tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-
-        .data-table tr:hover {
-            background: #f0f2ff;
-        }
-
-        /* Status Messages */
-        .alert {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-
-        .alert-info {
-            background: #e3f2fd;
-            color: #1976d2;
-            border-left: 4px solid #1976d2;
-        }
-
-        .alert-success {
-            background: #f1f8e9;
-            color: #558b2f;
-            border-left: 4px solid #558b2f;
-        }
-
-        .alert-error {
-            background: #ffebee;
-            color: #c62828;
-            border-left: 4px solid #c62828;
-        }
-
-        .alert-warning {
-            background: #fff3e0;
-            color: #e65100;
-            border-left: 4px solid #e65100;
-        }
-
-        /* Progress Bar */
-        .progress-section {
-            display: none;
-        }
-
-        .progress-section.show {
-            display: block;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 10px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        .progress-text {
-            text-align: center;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        /* Logs */
-        .logs-container {
-            background: #1e1e1e;
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85em;
-            max-height: 300px;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-
-        .log-entry {
-            margin: 5px 0;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-        }
-
-        .log-entry.success {
-            color: #00ff00;
-        }
-
-        .log-entry.error {
-            color: #ff4444;
-        }
-
-        .log-entry.info {
-            color: #4499ff;
-        }
-
-        .log-entry.warning {
-            color: #ffaa00;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .tab {
-            padding: 12px 20px;
-            background: none;
-            border: none;
-            color: #999;
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s ease;
-        }
-
-        .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Validation Icons */
-        .icon-check {
-            color: #4caf50;
-        }
-
-        .icon-error {
-            color: #f44336;
-        }
-
-        .icon-warning {
-            color: #ff9800;
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8em;
-            }
-
-            .card {
-                padding: 20px;
-            }
-
-            .mapping-table,
-            .data-table {
-                font-size: 0.8em;
-            }
-
-            .btn {
-                padding: 10px 16px;
-                font-size: 0.9em;
-            }
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .status-connected {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #f1f8e9;
-            color: #558b2f;
-            border-radius: 4px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            border-left: 4px solid #558b2f;
-        }
-
-        .status-error {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #ffebee;
-            color: #c62828;
-            border-radius: 4px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            border-left: 4px solid #c62828;
+            .header h1 { font-size: 1.8em; }
+            .card { padding: 20px; }
+            .btn { padding: 10px 16px; font-size: 0.9em; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h1>📊 Importador de Dados</h1>
             <p>Sistema de Recrutamento Renaux Service</p>
             <div id="statusConnection" style="margin-top: 15px;"></div>
         </div>
 
-        <!-- Main Card -->
         <div class="card">
-            <!-- Upload Section -->
             <div id="uploadSection">
                 <h2 class="section-title">1️⃣ Selecione o arquivo Excel</h2>
                 
-                <div class="alert alert-info" style="margin-bottom: 20px;">
-                    <strong>💡 Dica:</strong> Se não souber qual formato usar, 
+                <div class="alert alert-info">
+                    💡 Se não souber o formato, 
                     <button class="btn btn-secondary" id="downloadModelBtn" style="margin-left: 10px; padding: 8px 16px; font-size: 0.9em;">
                         📥 Baixar Planilha Modelo
                     </button>
@@ -484,249 +97,121 @@
                 
                 <div class="upload-section" id="dropZone">
                     <div class="upload-icon">📁</div>
-                    <p><strong>Clique ou arraste um arquivo Excel aqui</strong></p>
-                    <p>Formatos aceitos: .xlsx, .xls</p>
+                    <p><strong>Clique ou arraste um arquivo Excel</strong></p>
+                    <p>Formatos: .xlsx ou .xls</p>
                     <input type="file" id="fileInput" accept=".xlsx,.xls" />
                 </div>
 
-                <div style="margin-top: 20px;">
+                <div style="margin-top: 20px; text-align: center;">
                     <button class="btn btn-primary" id="browseBtn">Procurar arquivo</button>
                 </div>
             </div>
 
-            <!-- Preview Section -->
-            <div id="previewSection" class="preview-section">
-                <h2 class="section-title">2️⃣ Mapeamento de Colunas</h2>
+            <div id="previewSection" class="hidden">
+                <h2 class="section-title">2️⃣ Mapeamento e Validação</h2>
                 
-                <div class="file-info" id="fileInfo"></div>
+                <div class="alert alert-info" id="fileInfo"></div>
 
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('mapping')">Mapeamento</button>
-                    <button class="tab" onclick="switchTab('preview')">Preview de Dados</button>
-                    <button class="tab" onclick="switchTab('validation')">Validação</button>
+                <h3 style="color: #333; margin: 20px 0 15px 0;">Primeiras 5 linhas do arquivo:</h3>
+                <div style="overflow-x: auto; margin-bottom: 20px;">
+                    <table class="table" id="previewTable"></table>
                 </div>
 
-                <!-- Mapping Tab -->
-                <div id="mapping" class="tab-content active">
-                    <p style="color: #666; margin-bottom: 15px;">
-                        Mapeie as colunas do seu Excel para os campos do banco de dados.
-                    </p>
-                    <div style="overflow-x: auto;">
-                        <table class="mapping-table" id="mappingTable"></table>
-                    </div>
-                </div>
-
-                <!-- Preview Tab -->
-                <div id="preview" class="tab-content">
-                    <p style="color: #666; margin-bottom: 15px;">
-                        Primeiras 10 linhas dos dados a serem importados:
-                    </p>
-                    <div style="overflow-x: auto;">
-                        <table class="data-table" id="previewTable"></table>
-                    </div>
-                </div>
-
-                <!-- Validation Tab -->
-                <div id="validation" class="tab-content">
-                    <div id="validationResults"></div>
-                </div>
-
-                <div class="action-buttons">
+                <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                     <button class="btn btn-secondary" id="clearBtn">Limpar</button>
                     <button class="btn btn-primary" id="validateBtn">Validar dados</button>
                     <button class="btn btn-success" id="importBtn" disabled>Importar para banco</button>
                 </div>
+
+                <div id="validationResults" style="margin-top: 20px;"></div>
             </div>
 
-            <!-- Progress Section -->
-            <div id="progressSection" class="progress-section">
+            <div id="progressSection" class="hidden">
                 <h2 class="section-title">3️⃣ Importando dados...</h2>
-                
                 <div class="progress-text" id="progressText">0%</div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-
                 <div class="logs-container" id="logsContainer"></div>
             </div>
 
-            <!-- Results Section -->
-            <div id="resultsSection" style="display: none;">
+            <div id="resultsSection" class="hidden">
                 <h2 class="section-title">✅ Importação Concluída</h2>
                 <div id="resultsContent"></div>
-                <div class="action-buttons">
-                    <button class="btn btn-primary" id="newImportBtn">Nova Importação</button>
-                </div>
+                <button class="btn btn-primary" id="newImportBtn" style="margin-top: 20px;">Nova Importação</button>
             </div>
         </div>
 
-        <!-- Info Card -->
         <div class="card" style="background: #f9f9f9;">
-            <h3 style="margin-bottom: 15px; color: #333;">ℹ️ Instruções de Uso</h3>
+            <h3 style="margin-bottom: 15px; color: #333;">ℹ️ Como Usar</h3>
             <ul style="color: #666; line-height: 1.8; margin-left: 20px;">
-                <li><strong>Passo 1:</strong> Faça upload do arquivo Excel com os dados dos candidatos</li>
-                <li><strong>Passo 2:</strong> Mapeie as colunas do Excel para os campos do banco de dados</li>
-                <li><strong>Passo 3:</strong> Valide os dados para garantir integridade</li>
-                <li><strong>Passo 4:</strong> Clique em "Importar para banco" para salvar os dados</li>
-                <li><strong>Dica:</strong> O arquivo deve ter as colunas com os nomes dos candidatos, CPF, email, etc</li>
+                <li><strong>Passo 1:</strong> Faça upload do arquivo Excel</li>
+                <li><strong>Passo 2:</strong> Valide os dados</li>
+                <li><strong>Passo 3:</strong> Clique "Importar para banco"</li>
+                <li><strong>Dica:</strong> Use o modelo de planilha se não souber o formato</li>
             </ul>
         </div>
     </div>
 
     <script>
-        // ============================================================================
-        // CONFIGURAÇÃO SUPABASE - CREDENCIAIS ATUALIZADAS
-        // ============================================================================
+        // ====== CONFIGURAÇÃO SUPABASE ======
         const SUPABASE_URL = 'https://zmgpumnvjyupvnwwgocr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptZ3B1bW52anl1cHZud3dnb2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcwODQ1NTUsImV4cCI6MzM2MjI0NDU1NX0.8vDmg6F7jG3Ohv8cI6MjEwNDQ4OdkONX0.KUp';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Verificar conexão com Supabase
-        async function verificarConexao() {
+        // ====== VERIFICAR CONEXÃO ======
+        window.addEventListener('load', async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('candidatos')
                     .select('count', { count: 'exact', head: true });
                 
                 if (error) throw error;
-                
-                const statusDiv = document.getElementById('statusConnection');
-                statusDiv.innerHTML = '<div class="status-connected">✅ Conectado ao Supabase com sucesso!</div>';
-                console.log('✅ Conexão Supabase OK');
+                document.getElementById('statusConnection').innerHTML = '<div class="status-connected">✅ Conectado ao Supabase com sucesso!</div>';
             } catch (error) {
-                const statusDiv = document.getElementById('statusConnection');
-                statusDiv.innerHTML = `<div class="status-error">❌ Erro na conexão: ${error.message}</div>`;
-                console.error('❌ Erro de conexão:', error);
+                document.getElementById('statusConnection').innerHTML = `<div class="status-error">❌ Erro na conexão: ${error.message}</div>`;
             }
-        }
+        });
 
-        // Verificar conexão ao carregar
-        window.addEventListener('load', verificarConexao);
-
-        // ============================================================================
-        // ESTADO GLOBAL
-        // ============================================================================
+        // ====== VARIÁVEIS GLOBAIS ======
         let excelData = null;
-        let mappingConfig = {};
-        let validationResults = null;
-        let importStats = {
-            total: 0,
-            sucesso: 0,
-            erro: 0,
-            aviso: 0
-        };
+        let importStats = { total: 0, sucesso: 0, erro: 0 };
 
-        // ============================================================================
-        // MAPEAMENTO DE CAMPOS
-        // ============================================================================
-        const FIELD_MAPPING = {
-            'NOME': 'nome_completo',
-            'CPF': 'cpf',
-            'RG': 'rg',
-            'DATA DE NASC.': 'data_nascimento',
-            'DATA NASC': 'data_nascimento',
-            'GENERO': 'genero',
-            'GÊNERO': 'genero',
-            'TELEFONE': 'telefone',
-            'E-MAIL': 'email',
-            'EMAIL': 'email',
-            'ENDEREÇO': 'endereco',
-            'NUMERO RESIDENCIAL': 'numero_residencial',
-            'N_RESIDENCIAL': 'numero_residencial',
-            'BAIRRO': 'bairro',
-            'CIDADE_RESIDENCIAL': 'cidade_residencial',
-            'ESTADO': 'estado_residencial',
-            'CEP': 'cep',
-            'NOME DA MÃE': 'nome_mae',
-            'NOME DO PAI': 'nome_pai',
-            'PROCESSO': 'processo',
-            'CARGO': 'cargo',
-            'TEMPO EXPERIÊNCIA': 'tempo_experiencia',
-            'ESCOLARIDADE': 'escolaridade',
-            'PESO': 'peso',
-            'ALTURA': 'altura',
-            'N_FARDA': 'tamanho_farda',
-            'N_SAPATO/BOTA': 'tamanho_sapato',
-            'FILHO': 'tem_filho',
-            'QTD_FILHO': 'qtd_filhos',
-        };
-
-        const FIELD_TYPES = {
-            'nome_completo': 'text',
-            'cpf': 'cpf',
-            'rg': 'text',
-            'data_nascimento': 'date',
-            'genero': 'select',
-            'telefone': 'phone',
-            'email': 'email',
-            'endereco': 'text',
-            'numero_residencial': 'text',
-            'bairro': 'text',
-            'cidade_residencial': 'text',
-            'estado_residencial': 'text',
-            'cep': 'cep',
-            'nome_mae': 'text',
-            'nome_pai': 'text',
-            'processo': 'text',
-            'cargo': 'text',
-            'tempo_experiencia': 'text',
-            'escolaridade': 'text',
-            'peso': 'number',
-            'altura': 'number',
-            'tamanho_farda': 'text',
-            'tamanho_sapato': 'text',
-            'tem_filho': 'boolean',
-            'qtd_filhos': 'number'
-        };
-
-        // ============================================================================
-        // EVENT LISTENERS
-        // ============================================================================
+        // ====== EVENT LISTENERS ======
         document.getElementById('browseBtn').addEventListener('click', () => {
             document.getElementById('fileInput').click();
         });
 
         document.getElementById('downloadModelBtn').addEventListener('click', baixarPlanilhaModelo);
-
-        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-
+        document.getElementById('fileInput').addEventListener('change', (e) => processFile(e.target.files[0]));
+        
         const dropZone = document.getElementById('dropZone');
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('active');
         });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('active');
-        });
-
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('active');
-            const file = e.dataTransfer.files[0];
-            processFile(file);
+            processFile(e.dataTransfer.files[0]);
         });
 
-        document.getElementById('validateBtn').addEventListener('click', validateData);
-        document.getElementById('importBtn').addEventListener('click', importData);
+        document.getElementById('validateBtn').addEventListener('click', validarDados);
+        document.getElementById('importBtn').addEventListener('click', importarDados);
         document.getElementById('clearBtn').addEventListener('click', reset);
         document.getElementById('newImportBtn').addEventListener('click', reset);
 
-        // ============================================================================
-        // FUNÇÕES PRINCIPAIS
-        // ============================================================================
+        // ====== FUNÇÃO: BAIXAR MODELO ======
         function baixarPlanilhaModelo() {
-            // Criar dados modelo com estrutura correta
-            const dados_modelo = [
+            const dados = [
                 {
                     'NOME': 'João da Silva Santos',
                     'CPF': '123.456.789-10',
                     'RG': '1234567',
                     'DATA DE NASC.': new Date(1990, 0, 15),
                     'GENERO': 'M',
-                    'NOME DA MÃE': 'Maria Silva',
-                    'NOME DO PAI': 'José Santos',
                     'TELEFONE': '11 99999-9999',
                     'E-MAIL': 'joao@email.com',
                     'ENDEREÇO': 'Rua Exemplo',
@@ -736,21 +221,10 @@
                     'Estado': 'AP',
                     'CEP': '68997-000',
                     'PROCESSO': 'ELETRICISTA DE RD PL',
-                    'CARGO': 'Eletricista RD Pleno',
-                    'TEMPO EXPERIÊNCIA': '3-4',
-                    'EPS': 'ELINSA',
-                    'RD': 'SIM',
-                    'ESCOLARIDADE': 'MÉDIO',
-                    'TECNICO ELETROTECNICA': 'NÃO',
                     'PESO': 78.5,
                     'ALTURA': 1.75,
-                    'N_FARDA': 'G',
-                    'N_SAPATO/BOTA': '42',
                     'FILHO': 'SIM',
-                    'QTD_FILHO': 2,
-                    'TRIAGEM': 'APROVADO',
-                    'DECISÃO': 'ACEITO',
-                    'STATUS FINAL': 'APTO'
+                    'QTD_FILHO': 2
                 },
                 {
                     'NOME': 'Ana Paula Oliveira',
@@ -758,8 +232,6 @@
                     'RG': '7654321',
                     'DATA DE NASC.': new Date(1988, 5, 22),
                     'GENERO': 'F',
-                    'NOME DA MÃE': 'Paula Oliveira',
-                    'NOME DO PAI': 'Carlos Oliveira',
                     'TELEFONE': '21 98888-8888',
                     'E-MAIL': 'ana@email.com',
                     'ENDEREÇO': 'Avenida Central',
@@ -769,21 +241,10 @@
                     'Estado': 'AP',
                     'CEP': '68920-000',
                     'PROCESSO': 'ELETRICISTA DE RD SR',
-                    'CARGO': 'Eletricista RD Sênior',
-                    'TEMPO EXPERIÊNCIA': '4+',
-                    'EPS': 'CEDEP',
-                    'RD': 'SIM',
-                    'ESCOLARIDADE': 'TÉCNICO',
-                    'TECNICO ELETROTECNICA': 'SIM',
                     'PESO': 65.0,
                     'ALTURA': 1.68,
-                    'N_FARDA': 'M',
-                    'N_SAPATO/BOTA': '38',
                     'FILHO': 'NÃO',
-                    'QTD_FILHO': 0,
-                    'TRIAGEM': 'APROVADO',
-                    'DECISÃO': 'ACEITO',
-                    'STATUS FINAL': 'APTO'
+                    'QTD_FILHO': 0
                 },
                 {
                     'NOME': 'Carlos Eduardo Costa',
@@ -791,8 +252,6 @@
                     'RG': '4567890',
                     'DATA DE NASC.': new Date(1992, 11, 8),
                     'GENERO': 'M',
-                    'NOME DA MÃE': 'Fernanda Costa',
-                    'NOME DO PAI': 'Eduardo Costa',
                     'TELEFONE': '85 97777-7777',
                     'E-MAIL': 'carlos@email.com',
                     'ENDEREÇO': 'Rua das Flores',
@@ -802,51 +261,26 @@
                     'Estado': 'AP',
                     'CEP': '68915-000',
                     'PROCESSO': 'ELETRICISTA DE RD JR',
-                    'CARGO': 'Eletricista RD Júnior',
-                    'TEMPO EXPERIÊNCIA': '1-2',
-                    'EPS': 'FATECH',
-                    'RD': 'SIM',
-                    'ESCOLARIDADE': 'MÉDIO INC.',
-                    'TECNICO ELETROTECNICA': 'NÃO',
                     'PESO': 82.0,
                     'ALTURA': 1.80,
-                    'N_FARDA': 'GG',
-                    'N_SAPATO/BOTA': '44',
                     'FILHO': 'SIM',
-                    'QTD_FILHO': 1,
-                    'TRIAGEM': 'REPROVADO',
-                    'DECISÃO': 'RECUSADO',
-                    'STATUS FINAL': 'INAPTO'
+                    'QTD_FILHO': 1
                 }
             ];
 
-            // Criar workbook
-            const ws = XLSX.utils.json_to_sheet(dados_modelo);
+            const ws = XLSX.utils.json_to_sheet(dados);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'BANCO DE DADOS');
+            ws['!cols'] = Array(Object.keys(dados[0]).length).fill({ wch: 15 });
 
-            // Ajustar largura das colunas
-            const colunas = Object.keys(dados_modelo[0]);
-            const larguras = colunas.map(col => ({ wch: Math.max(12, col.length + 2) }));
-            ws['!cols'] = larguras;
-
-            // Fazer download
-            const nome_arquivo = `Modelo_Importacao_Renaux_${new Date().getTime()}.xlsx`;
-            XLSX.writeFile(wb, nome_arquivo);
-
-            showAlert('✅ Planilha modelo baixada com sucesso!', 'success');
+            XLSX.writeFile(wb, `Modelo_Renaux_${Date.now()}.xlsx`);
+            mostraAlert('✅ Planilha modelo baixada com sucesso!', 'success');
         }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                processFile(file);
-            }
-        }
-
+        // ====== FUNÇÃO: PROCESSAR ARQUIVO ======
         function processFile(file) {
-            if (!file.name.match(/\.(xlsx|xls)$/)) {
-                showAlert('Por favor, selecione um arquivo Excel válido (.xlsx ou .xls)', 'error');
+            if (!file || !file.name.match(/\.(xlsx|xls)$/)) {
+                mostraAlert('Selecione um arquivo Excel válido (.xlsx ou .xls)', 'error');
                 return;
             }
 
@@ -854,408 +288,155 @@
             reader.onload = (e) => {
                 try {
                     const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const sheet = workbook.Sheets[sheetName];
-                    const data = XLSX.utils.sheet_to_json(sheet);
-
+                    const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                     excelData = data;
-                    showPreview();
-                    showAlert(`✅ Arquivo carregado com sucesso! ${data.length} registros encontrados.`, 'success');
+                    mostrarPreview();
+                    mostraAlert(`✅ ${data.length} registros carregados!`, 'success');
                 } catch (error) {
-                    showAlert(`Erro ao ler arquivo: ${error.message}`, 'error');
+                    mostraAlert(`Erro ao ler: ${error.message}`, 'error');
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function showPreview() {
-            document.getElementById('uploadSection').style.display = 'none';
-            document.getElementById('previewSection').classList.add('show');
+        // ====== FUNÇÃO: MOSTRAR PREVIEW ======
+        function mostrarPreview() {
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('previewSection').classList.remove('hidden');
 
-            // Mostrar informações do arquivo
-            const fileInfo = document.getElementById('fileInfo');
-            fileInfo.innerHTML = `
-                <p><strong>Total de registros:</strong> ${excelData.length}</p>
-                <p><strong>Colunas identificadas:</strong> ${Object.keys(excelData[0]).length}</p>
-                <p><strong>Colunas:</strong> ${Object.keys(excelData[0]).join(', ')}</p>
+            document.getElementById('fileInfo').innerHTML = `
+                <strong>Total:</strong> ${excelData.length} registros | 
+                <strong>Colunas:</strong> ${Object.keys(excelData[0]).length}
             `;
 
-            // Criar tabela de mapeamento
-            createMappingTable();
-            
-            // Criar preview de dados
-            createPreviewTable();
-        }
-
-        function createMappingTable() {
-            const table = document.getElementById('mappingTable');
-            table.innerHTML = '<thead><tr><th>Coluna Excel</th><th>Mapear para Campo</th></tr></thead><tbody></tbody>';
-            const tbody = table.querySelector('tbody');
-
-            const excelColumns = Object.keys(excelData[0]);
-            
-            excelColumns.forEach(col => {
-                const row = document.createElement('tr');
-                
-                const cellCol = document.createElement('td');
-                cellCol.textContent = col;
-                
-                const cellMap = document.createElement('td');
-                const select = document.createElement('select');
-                
-                // Opção em branco
-                const emptyOption = document.createElement('option');
-                emptyOption.value = '';
-                emptyOption.textContent = '-- Não mapear --';
-                select.appendChild(emptyOption);
-
-                // Opções dos campos do BD
-                const dbFields = Object.values(FIELD_MAPPING);
-                [...new Set(dbFields)].sort().forEach(field => {
-                    const option = document.createElement('option');
-                    option.value = field;
-                    option.textContent = field;
-                    
-                    // Tentar auto-mapear
-                    if (FIELD_MAPPING[col] === field) {
-                        option.selected = true;
-                    }
-                    
-                    select.appendChild(option);
-                });
-
-                select.addEventListener('change', (e) => {
-                    mappingConfig[col] = e.target.value;
-                });
-
-                cellMap.appendChild(select);
-                row.appendChild(cellCol);
-                row.appendChild(cellMap);
-                tbody.appendChild(row);
-            });
-        }
-
-        function createPreviewTable() {
             const table = document.getElementById('previewTable');
             table.innerHTML = '';
-
             const headers = Object.keys(excelData[0]);
-            const headerRow = table.createTHead().insertRow();
-            headers.forEach(header => {
+            
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+            headers.forEach(h => {
                 const th = document.createElement('th');
-                th.textContent = header;
+                th.textContent = h;
                 headerRow.appendChild(th);
             });
 
             const tbody = table.createTBody();
-            excelData.slice(0, 10).forEach(row => {
+            excelData.slice(0, 5).forEach(row => {
                 const tr = tbody.insertRow();
-                headers.forEach(header => {
+                headers.forEach(h => {
                     const td = tr.insertCell();
-                    td.textContent = row[header] || '';
+                    td.textContent = row[h] || '';
                 });
             });
         }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tab).classList.add('active');
-        }
+        // ====== FUNÇÃO: VALIDAR ======
+        function validarDados() {
+            let erros = 0;
+            const resultadoDiv = document.getElementById('validationResults');
+            let html = '<div class="alert alert-success"><strong>✅ Validação concluída!</strong></div>';
 
-        function validateData() {
-            const results = {
-                total: excelData.length,
-                erros: [],
-                avisos: []
-            };
-
-            excelData.forEach((row, index) => {
-                // Validar CPF (obrigatório e único)
+            excelData.forEach((row, i) => {
+                if (!row.NOME || row.NOME.toString().trim().length < 3) {
+                    html = `<div class="alert alert-error"><strong>❌ Linha ${i+2}: Nome inválido</strong></div>` + html;
+                    erros++;
+                }
                 if (!row.CPF) {
-                    results.erros.push(`Linha ${index + 2}: CPF obrigatório`);
-                } else if (!validarCPF(row.CPF)) {
-                    results.avisos.push(`Linha ${index + 2}: CPF ${row.CPF} inválido`);
-                }
-
-                // Validar email
-                if (row['E-MAIL'] && !validarEmail(row['E-MAIL'])) {
-                    results.avisos.push(`Linha ${index + 2}: Email ${row['E-MAIL']} inválido`);
-                }
-
-                // Validar data
-                if (row['DATA DE NASC.'] && !validarData(row['DATA DE NASC.'])) {
-                    results.avisos.push(`Linha ${index + 2}: Data de nascimento inválida`);
-                }
-
-                // Validar números
-                if (row.PESO && isNaN(row.PESO)) {
-                    results.avisos.push(`Linha ${index + 2}: Peso deve ser um número`);
-                }
-                if (row.ALTURA && isNaN(row.ALTURA)) {
-                    results.avisos.push(`Linha ${index + 2}: Altura deve ser um número`);
-                }
-
-                // Validar nome
-                if (!row.NOME || row.NOME.trim().length < 3) {
-                    results.erros.push(`Linha ${index + 2}: Nome deve ter pelo menos 3 caracteres`);
+                    html = `<div class="alert alert-error"><strong>❌ Linha ${i+2}: CPF obrigatório</strong></div>` + html;
+                    erros++;
                 }
             });
 
-            validationResults = results;
-            showValidationResults(results);
-            
-            if (results.erros.length === 0) {
+            if (erros === 0) {
                 document.getElementById('importBtn').disabled = false;
-                showAlert('✅ Validação concluída! Dados prontos para importar.', 'success');
+                mostraAlert('✅ Dados válidos! Pronto para importar.', 'success');
             } else {
-                showAlert(`❌ Encontrados ${results.erros.length} erro(s). Corrija antes de importar.`, 'error');
+                mostraAlert(`❌ Encontrados ${erros} erro(s).`, 'error');
             }
+
+            resultadoDiv.innerHTML = html;
         }
 
-        function showValidationResults(results) {
-            const container = document.getElementById('validationResults');
-            let html = `
-                <div class="alert alert-info">
-                    Total de registros: <strong>${results.total}</strong>
-                </div>
-            `;
+        // ====== FUNÇÃO: IMPORTAR ======
+        async function importarDados() {
+            document.getElementById('previewSection').classList.add('hidden');
+            document.getElementById('progressSection').classList.remove('hidden');
 
-            if (results.erros.length > 0) {
-                html += `
-                    <div class="alert alert-error">
-                        <strong>❌ Erros encontrados: ${results.erros.length}</strong>
-                    </div>
-                    <ul style="margin-left: 20px; color: #c62828;">
-                        ${results.erros.slice(0, 20).map(e => `<li>${e}</li>`).join('')}
-                        ${results.erros.length > 20 ? `<li>... e mais ${results.erros.length - 20} erros</li>` : ''}
-                    </ul>
-                `;
-            }
-
-            if (results.avisos.length > 0) {
-                html += `
-                    <div class="alert alert-warning" style="margin-top: 15px;">
-                        <strong>⚠️ Avisos: ${results.avisos.length}</strong>
-                    </div>
-                    <ul style="margin-left: 20px; color: #e65100;">
-                        ${results.avisos.slice(0, 20).map(a => `<li>${a}</li>`).join('')}
-                        ${results.avisos.length > 20 ? `<li>... e mais ${results.avisos.length - 20} avisos</li>` : ''}
-                    </ul>
-                `;
-            }
-
-            if (results.erros.length === 0 && results.avisos.length === 0) {
-                html += '<div class="alert alert-success"><strong>✅ Todos os dados estão válidos!</strong></div>';
-            }
-
-            container.innerHTML = html;
-        }
-
-        async function importData() {
-            document.getElementById('previewSection').classList.remove('show');
-            document.getElementById('progressSection').classList.add('show');
-
-            importStats = { total: excelData.length, sucesso: 0, erro: 0, aviso: 0 };
-
-            const logsContainer = document.getElementById('logsContainer');
-            logsContainer.innerHTML = '';
-
-            addLog('Iniciando importação...', 'info');
-            addLog(`Total de registros: ${excelData.length}`, 'info');
-
-            let processados = 0;
+            importStats = { total: excelData.length, sucesso: 0, erro: 0 };
+            document.getElementById('logsContainer').innerHTML = '';
 
             for (let i = 0; i < excelData.length; i++) {
                 const row = excelData[i];
-
                 try {
-                    // Inserir candidato
-                    const candidatoData = {
-                        nome_completo: row.NOME?.trim(),
-                        cpf: formatarCPF(row.CPF),
-                        rg: row.RG?.toString() || null,
-                        data_nascimento: formatarData(row['DATA DE NASC.']),
-                        genero: row.GENERO?.toUpperCase()?.[0] || null,
-                        nome_mae: row['NOME DA MÃE']?.trim() || null,
-                        nome_pai: row['NOME DO PAI']?.trim() || null,
-                        peso: parseFloat(row.PESO) || null,
-                        altura: parseFloat(row.ALTURA) || null,
-                        tamanho_farda: row.N_FARDA?.toUpperCase()?.trim() || null,
-                        tamanho_sapato: row['N_SAPATO/BOTA']?.toString() || null,
-                        tem_filho: row.FILHO?.toUpperCase() === 'SIM' || false,
-                        qtd_filhos: parseInt(row.QTD_FILHO) || 0
-                    };
-
-                    // Inserir candidato
-                    const { data: candidato, error: erroCandidato } = await supabase
+                    const { error } = await supabaseClient
                         .from('candidatos')
-                        .insert([candidatoData])
-                        .select()
-                        .single();
-
-                    if (erroCandidato) throw erroCandidato;
-
-                    const idCandidato = candidato.id_candidato;
-
-                    // Inserir contato
-                    if (row['E-MAIL'] || row.TELEFONE) {
-                        await supabase.from('contatos').insert([{
-                            id_candidato: idCandidato,
-                            email: row['E-MAIL']?.toLowerCase()?.trim() || null,
-                            telefone: row.TELEFONE?.toString() || null,
-                            tipo: 'primário'
+                        .insert([{
+                            nome_completo: row.NOME?.trim(),
+                            cpf: row.CPF?.toString().replace(/\D/g, ''),
+                            rg: row.RG?.toString() || null,
+                            data_nascimento: row['DATA DE NASC.'] ? new Date(row['DATA DE NASC.']).toISOString().split('T')[0] : null,
+                            genero: row.GENERO?.toString().toUpperCase()?.[0] || null,
+                            peso: parseFloat(row.PESO) || null,
+                            altura: parseFloat(row.ALTURA) || null,
+                            tem_filho: row.FILHO?.toString().toUpperCase() === 'SIM',
+                            qtd_filhos: parseInt(row.QTD_FILHO) || 0
                         }]);
-                    }
 
-                    // Inserir endereço
-                    if (row.ENDEREÇO || row.CIDADE_RESIDENCIAL) {
-                        await supabase.from('enderecos').insert([{
-                            id_candidato: idCandidato,
-                            tipo: 'residencial',
-                            rua: row.ENDEREÇO?.trim() || null,
-                            numero: row.N_RESIDENCIAL?.toString() || null,
-                            bairro: row.BAIRRO?.trim() || null,
-                            cidade: row.CIDADE_RESIDENCIAL?.trim() || null,
-                            estado: row.Estado?.toUpperCase() || 'AP',
-                            cep: row.CEP?.toString() || null
-                        }]);
-                    }
-
-                    // Inserir processo seletivo candidato
-                    if (row.PROCESSO || row.CARGO) {
-                        const { data: processo } = await supabase
-                            .from('processos_seletivos')
-                            .select('id_processo')
-                            .eq('nome_processo', row.PROCESSO?.toString()?.trim())
-                            .single();
-
-                        if (processo) {
-                            await supabase.from('processo_seletivo_candidato').insert([{
-                                id_candidato: idCandidato,
-                                id_processo: processo.id_processo,
-                                status_geral: 'PRÉ-TRIAGEM',
-                                resultado_triagem: row.TRIAGEM?.toUpperCase() || null,
-                                eps: row.EPS?.trim() || null,
-                                decisao_final: row.DECISÃO?.toUpperCase() || null,
-                                status_final: row['STATUS FINAL']?.toUpperCase() || null
-                            }]);
-                        }
-                    }
-
+                    if (error) throw error;
                     importStats.sucesso++;
-                    addLog(`✓ Linha ${i + 2}: ${row.NOME} importado com sucesso`, 'success');
-
+                    addLog(`✓ Linha ${i+2}: ${row.NOME}`, 'success');
                 } catch (error) {
                     importStats.erro++;
-                    addLog(`✗ Linha ${i + 2}: Erro - ${error.message}`, 'error');
+                    addLog(`✗ Linha ${i+2}: ${error.message}`, 'error');
                 }
 
-                processados++;
-                const progresso = Math.round((processados / excelData.length) * 100);
-                document.getElementById('progressFill').style.width = progresso + '%';
-                document.getElementById('progressText').textContent = progresso + '%';
+                const prog = Math.round(((i + 1) / excelData.length) * 100);
+                document.getElementById('progressFill').style.width = prog + '%';
+                document.getElementById('progressText').textContent = prog + '%';
             }
 
-            showImportResults();
+            mostrarResultados();
         }
 
-        function showImportResults() {
-            document.getElementById('progressSection').classList.remove('show');
-            document.getElementById('resultsSection').style.display = 'block';
-
-            const html = `
-                <div class="alert alert-success">
-                    <strong>✅ Importação concluída!</strong>
-                </div>
-                
-                <div class="file-info">
-                    <p><strong>Total de registros:</strong> ${importStats.total}</p>
-                    <p><strong style="color: #4caf50;">Sucesso:</strong> ${importStats.sucesso}</p>
-                    <p><strong style="color: #f44336;">Erros:</strong> ${importStats.erro}</p>
-                    <p><strong style="color: #ff9800;">Taxa de sucesso:</strong> ${((importStats.sucesso / importStats.total) * 100).toFixed(2)}%</p>
-                </div>
-
-                <p style="color: #666; margin-top: 20px;">
-                    Os dados foram inseridos com sucesso no banco de dados Supabase. 
-                    Você pode visualizá-los no Power BI ou na aplicação web.
-                </p>
-            `;
-
-            document.getElementById('resultsContent').innerHTML = html;
-        }
-
-        // ============================================================================
-        // FUNÇÕES UTILITÁRIAS
-        // ============================================================================
-        function validarCPF(cpf) {
-            cpf = cpf?.toString().replace(/\D/g, '') || '';
-            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-            
-            let sum = 0, remainder;
-            for (let i = 1; i <= 9; i++) sum += parseInt(cpf.substring(i - 1, i)) * (11 - i);
-            remainder = (sum * 10) % 11;
-            if (remainder === 10 || remainder === 11) remainder = 0;
-            if (remainder !== parseInt(cpf.substring(9, 10))) return false;
-            
-            sum = 0;
-            for (let i = 1; i <= 10; i++) sum += parseInt(cpf.substring(i - 1, i)) * (12 - i);
-            remainder = (sum * 10) % 11;
-            if (remainder === 10 || remainder === 11) remainder = 0;
-            if (remainder !== parseInt(cpf.substring(10, 11))) return false;
-            
-            return true;
-        }
-
-        function validarEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        }
-
-        function validarData(data) {
-            if (!data) return false;
-            const d = new Date(data);
-            return d instanceof Date && !isNaN(d);
-        }
-
-        function formatarCPF(cpf) {
-            return cpf?.toString().replace(/\D/g, '') || '';
-        }
-
-        function formatarData(data) {
-            if (!data) return null;
-            const d = new Date(data);
-            return d.toISOString().split('T')[0];
-        }
-
-        function addLog(message, type = 'info') {
-            const logsContainer = document.getElementById('logsContainer');
+        // ====== FUNÇÕES UTILITÁRIAS ======
+        function addLog(msg, type = 'info') {
+            const container = document.getElementById('logsContainer');
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logsContainer.appendChild(entry);
-            logsContainer.scrollTop = logsContainer.scrollHeight;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
         }
 
-        function showAlert(message, type = 'info') {
+        function mostrarResultados() {
+            document.getElementById('progressSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('resultsContent').innerHTML = `
+                <div class="alert alert-success">✅ Importação concluída!</div>
+                <div class="alert alert-info">
+                    <strong>Total:</strong> ${importStats.total} | 
+                    <strong>Sucesso:</strong> ${importStats.sucesso} | 
+                    <strong>Erros:</strong> ${importStats.erro} | 
+                    <strong>Taxa:</strong> ${((importStats.sucesso / importStats.total) * 100).toFixed(2)}%
+                </div>
+            `;
+        }
+
+        function mostraAlert(msg, type = 'info') {
             const alert = document.createElement('div');
             alert.className = `alert alert-${type}`;
-            alert.textContent = message;
+            alert.textContent = msg;
             document.querySelector('.card').prepend(alert);
-            
             setTimeout(() => alert.remove(), 5000);
         }
 
         function reset() {
             excelData = null;
-            mappingConfig = {};
-            validationResults = null;
-
-            document.getElementById('uploadSection').style.display = 'block';
-            document.getElementById('previewSection').classList.remove('show');
-            document.getElementById('progressSection').classList.remove('show');
-            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('uploadSection').classList.remove('hidden');
+            document.getElementById('previewSection').classList.add('hidden');
+            document.getElementById('progressSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
             document.getElementById('fileInput').value = '';
             document.getElementById('importBtn').disabled = true;
         }
