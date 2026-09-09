@@ -475,6 +475,13 @@
             <div id="uploadSection">
                 <h2 class="section-title">1️⃣ Selecione o arquivo Excel</h2>
                 
+                <div class="alert alert-info" style="margin-bottom: 20px;">
+                    <strong>💡 Dica:</strong> Se não souber qual formato usar, 
+                    <button class="btn btn-secondary" id="downloadModelBtn" style="margin-left: 10px; padding: 8px 16px; font-size: 0.9em;">
+                        📥 Baixar Planilha Modelo
+                    </button>
+                </div>
+                
                 <div class="upload-section" id="dropZone">
                     <div class="upload-icon">📁</div>
                     <p><strong>Clique ou arraste um arquivo Excel aqui</strong></p>
@@ -680,6 +687,8 @@
             document.getElementById('fileInput').click();
         });
 
+        document.getElementById('downloadModelBtn').addEventListener('click', baixarPlanilhaModelo);
+
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
 
         const dropZone = document.getElementById('dropZone');
@@ -707,6 +716,127 @@
         // ============================================================================
         // FUNÇÕES PRINCIPAIS
         // ============================================================================
+        function baixarPlanilhaModelo() {
+            // Criar dados modelo com estrutura correta
+            const dados_modelo = [
+                {
+                    'NOME': 'João da Silva Santos',
+                    'CPF': '123.456.789-10',
+                    'RG': '1234567',
+                    'DATA DE NASC.': new Date(1990, 0, 15),
+                    'GENERO': 'M',
+                    'NOME DA MÃE': 'Maria Silva',
+                    'NOME DO PAI': 'José Santos',
+                    'TELEFONE': '11 99999-9999',
+                    'E-MAIL': 'joao@email.com',
+                    'ENDEREÇO': 'Rua Exemplo',
+                    'N_RESIDENCIAL': '123',
+                    'BAIRRO': 'Centro',
+                    'CIDADE_RESIDENCIAL': 'Porto Grande',
+                    'Estado': 'AP',
+                    'CEP': '68997-000',
+                    'PROCESSO': 'ELETRICISTA DE RD PL',
+                    'CARGO': 'Eletricista RD Pleno',
+                    'TEMPO EXPERIÊNCIA': '3-4',
+                    'EPS': 'ELINSA',
+                    'RD': 'SIM',
+                    'ESCOLARIDADE': 'MÉDIO',
+                    'TECNICO ELETROTECNICA': 'NÃO',
+                    'PESO': 78.5,
+                    'ALTURA': 1.75,
+                    'N_FARDA': 'G',
+                    'N_SAPATO/BOTA': '42',
+                    'FILHO': 'SIM',
+                    'QTD_FILHO': 2,
+                    'TRIAGEM': 'APROVADO',
+                    'DECISÃO': 'ACEITO',
+                    'STATUS FINAL': 'APTO'
+                },
+                {
+                    'NOME': 'Ana Paula Oliveira',
+                    'CPF': '987.654.321-05',
+                    'RG': '7654321',
+                    'DATA DE NASC.': new Date(1988, 5, 22),
+                    'GENERO': 'F',
+                    'NOME DA MÃE': 'Paula Oliveira',
+                    'NOME DO PAI': 'Carlos Oliveira',
+                    'TELEFONE': '21 98888-8888',
+                    'E-MAIL': 'ana@email.com',
+                    'ENDEREÇO': 'Avenida Central',
+                    'N_RESIDENCIAL': '456',
+                    'BAIRRO': 'Aeroporto',
+                    'CIDADE_RESIDENCIAL': 'Laranjal do Jari',
+                    'Estado': 'AP',
+                    'CEP': '68920-000',
+                    'PROCESSO': 'ELETRICISTA DE RD SR',
+                    'CARGO': 'Eletricista RD Sênior',
+                    'TEMPO EXPERIÊNCIA': '4+',
+                    'EPS': 'CEDEP',
+                    'RD': 'SIM',
+                    'ESCOLARIDADE': 'TÉCNICO',
+                    'TECNICO ELETROTECNICA': 'SIM',
+                    'PESO': 65.0,
+                    'ALTURA': 1.68,
+                    'N_FARDA': 'M',
+                    'N_SAPATO/BOTA': '38',
+                    'FILHO': 'NÃO',
+                    'QTD_FILHO': 0,
+                    'TRIAGEM': 'APROVADO',
+                    'DECISÃO': 'ACEITO',
+                    'STATUS FINAL': 'APTO'
+                },
+                {
+                    'NOME': 'Carlos Eduardo Costa',
+                    'CPF': '456.789.123-45',
+                    'RG': '4567890',
+                    'DATA DE NASC.': new Date(1992, 11, 8),
+                    'GENERO': 'M',
+                    'NOME DA MÃE': 'Fernanda Costa',
+                    'NOME DO PAI': 'Eduardo Costa',
+                    'TELEFONE': '85 97777-7777',
+                    'E-MAIL': 'carlos@email.com',
+                    'ENDEREÇO': 'Rua das Flores',
+                    'N_RESIDENCIAL': '789',
+                    'BAIRRO': 'Castanheira',
+                    'CIDADE_RESIDENCIAL': 'Ferreira Gomes',
+                    'Estado': 'AP',
+                    'CEP': '68915-000',
+                    'PROCESSO': 'ELETRICISTA DE RD JR',
+                    'CARGO': 'Eletricista RD Júnior',
+                    'TEMPO EXPERIÊNCIA': '1-2',
+                    'EPS': 'FATECH',
+                    'RD': 'SIM',
+                    'ESCOLARIDADE': 'MÉDIO INC.',
+                    'TECNICO ELETROTECNICA': 'NÃO',
+                    'PESO': 82.0,
+                    'ALTURA': 1.80,
+                    'N_FARDA': 'GG',
+                    'N_SAPATO/BOTA': '44',
+                    'FILHO': 'SIM',
+                    'QTD_FILHO': 1,
+                    'TRIAGEM': 'REPROVADO',
+                    'DECISÃO': 'RECUSADO',
+                    'STATUS FINAL': 'INAPTO'
+                }
+            ];
+
+            // Criar workbook
+            const ws = XLSX.utils.json_to_sheet(dados_modelo);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'BANCO DE DADOS');
+
+            // Ajustar largura das colunas
+            const colunas = Object.keys(dados_modelo[0]);
+            const larguras = colunas.map(col => ({ wch: Math.max(12, col.length + 2) }));
+            ws['!cols'] = larguras;
+
+            // Fazer download
+            const nome_arquivo = `Modelo_Importacao_Renaux_${new Date().getTime()}.xlsx`;
+            XLSX.writeFile(wb, nome_arquivo);
+
+            showAlert('✅ Planilha modelo baixada com sucesso!', 'success');
+        }
+
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (file) {
