@@ -154,23 +154,27 @@
     </div>
 
     <script>
-        // ====== AGUARDAR BIBLIOTECAS CARREGAREM ======
-        function esperar(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
+        console.log('🔄 Inicializando...');
 
+        // ====== AGUARDAR BIBLIOTECAS COM TIMEOUT MAIOR ======
         async function esperarXLSX() {
+            console.log('⏳ Aguardando XLSX...');
             let tentativas = 0;
-            while (!window.XLSX && tentativas < 50) {
-                await esperar(100);
+            const maxTentativas = 100; // 10 segundos (100 * 100ms)
+            
+            while (!window.XLSX && tentativas < maxTentativas) {
+                await new Promise(resolve => setTimeout(resolve, 100));
                 tentativas++;
             }
+            
             if (!window.XLSX) {
-                console.error('XLSX não carregou após 5 segundos');
-                mostraAlert('⚠️ Erro ao carregar biblioteca XLSX. Recarregue a página.', 'error');
+                console.error('❌ XLSX não carregou após 10 segundos');
+                console.error('window.XLSX:', window.XLSX);
+                console.error('Tentativas:', tentativas);
                 return false;
             }
-            console.log('✅ XLSX carregado');
+            
+            console.log('✅ XLSX carregado após', tentativas * 100, 'ms');
             return true;
         }
 
@@ -182,15 +186,17 @@
         
         // Aguardar Supabase carregar
         async function inicializarSupabase() {
+            console.log('⏳ Aguardando Supabase...');
             let tentativas = 0;
-            while (!window.supabase && tentativas < 50) {
-                await esperar(100);
+            const maxTentativas = 100; // 10 segundos
+            
+            while (!window.supabase && tentativas < maxTentativas) {
+                await new Promise(resolve => setTimeout(resolve, 100));
                 tentativas++;
             }
             
             if (!window.supabase) {
-                console.error('Supabase não carregou');
-                mostraAlert('⚠️ Erro ao carregar Supabase. Recarregue a página.', 'error');
+                console.error('❌ Supabase não carregou após 10 segundos');
                 return false;
             }
             
@@ -199,8 +205,7 @@
                 console.log('✅ Supabase inicializado');
                 return true;
             } catch (error) {
-                console.error('Erro ao criar cliente Supabase:', error);
-                mostraAlert('⚠️ Erro ao conectar Supabase.', 'error');
+                console.error('❌ Erro ao criar cliente Supabase:', error);
                 return false;
             }
         }
@@ -209,6 +214,7 @@
         async function verificarConexao() {
             try {
                 if (!supabaseClient) {
+                    console.error('Supabase não está inicializado');
                     document.getElementById('statusConnection').innerHTML = '<div class="status-error">❌ Supabase não inicializado</div>';
                     return;
                 }
@@ -232,19 +238,27 @@
 
         // ====== INICIALIZAR NA CARGA ======
         window.addEventListener('load', async () => {
-            console.log('🔄 Inicializando...');
-            const xlsxOk = await esperarXLSX();
-            const supabaseOk = await inicializarSupabase();
-            
-            if (xlsxOk && supabaseOk) {
-                verificarConexao();
-                document.getElementById('downloadModelBtn').disabled = false;
-                document.getElementById('browseBtn').disabled = false;
-                console.log('✅ Pronto!');
-            } else {
-                document.getElementById('downloadModelBtn').disabled = true;
-                document.getElementById('browseBtn').disabled = true;
-                console.log('❌ Erro na inicialização');
+            try {
+                console.log('📍 Evento load disparado');
+                
+                const xlsxOk = await esperarXLSX();
+                const supabaseOk = await inicializarSupabase();
+                
+                if (xlsxOk && supabaseOk) {
+                    console.log('✅ Inicialização OK');
+                    verificarConexao();
+                    document.getElementById('downloadModelBtn').disabled = false;
+                    document.getElementById('browseBtn').disabled = false;
+                } else {
+                    console.error('❌ Erro na inicialização');
+                    document.getElementById('downloadModelBtn').disabled = true;
+                    document.getElementById('browseBtn').disabled = true;
+                    const statusDiv = document.getElementById('statusConnection');
+                    statusDiv.innerHTML = '<div class="status-error">❌ Erro ao carregar. Recarregue a página.</div>';
+                }
+            } catch (error) {
+                console.error('❌ Erro crítico:', error);
+                document.getElementById('statusConnection').innerHTML = '<div class="status-error">❌ Erro inesperado. Recarregue a página.</div>';
             }
         });
 
@@ -277,7 +291,7 @@
         function baixarPlanilhaModelo() {
             try {
                 if (!window.XLSX) {
-                    mostraAlert('❌ XLSX ainda não carregou. Aguarde...', 'error');
+                    mostraAlert('❌ XLSX ainda não carregou. Aguarde alguns segundos...', 'error');
                     return;
                 }
 
