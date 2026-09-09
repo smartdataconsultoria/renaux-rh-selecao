@@ -43,9 +43,10 @@
         }
         .btn-primary { background: #667eea; color: white; }
         .btn-primary:hover { background: #764ba2; transform: translateY(-2px); }
-        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
         .btn-secondary { background: #f0f0f0; color: #333; margin-left: 10px; }
         .btn-secondary:hover { background: #e0e0e0; }
+        .btn-secondary:disabled { background: #ddd; color: #999; cursor: not-allowed; }
         .btn-success { background: #4caf50; color: white; }
         .btn-success:hover { background: #45a049; }
         
@@ -53,7 +54,6 @@
         .table th { background: #667eea; color: white; padding: 10px; text-align: left; }
         .table td { padding: 10px; border-bottom: 1px solid #eee; }
         .table tr:hover { background: #f0f2ff; }
-        .table select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         
         .progress-bar { width: 100%; height: 10px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s; }
@@ -145,38 +145,108 @@
         <div class="card" style="background: #f9f9f9;">
             <h3 style="margin-bottom: 15px; color: #333;">ℹ️ Como Usar</h3>
             <ul style="color: #666; line-height: 1.8; margin-left: 20px;">
-                <li><strong>Passo 1:</strong> Faça upload do arquivo Excel</li>
-                <li><strong>Passo 2:</strong> Valide os dados</li>
-                <li><strong>Passo 3:</strong> Clique "Importar para banco"</li>
-                <li><strong>Dica:</strong> Use o modelo de planilha se não souber o formato</li>
+                <li><strong>Passo 1:</strong> Clique em "📥 Baixar Planilha Modelo" para ver o formato</li>
+                <li><strong>Passo 2:</strong> Faça upload do seu arquivo Excel</li>
+                <li><strong>Passo 3:</strong> Valide os dados</li>
+                <li><strong>Passo 4:</strong> Clique "Importar para banco"</li>
             </ul>
         </div>
     </div>
 
     <script>
+        // ====== AGUARDAR BIBLIOTECAS CARREGAREM ======
+        function esperar(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function esperarXLSX() {
+            let tentativas = 0;
+            while (!window.XLSX && tentativas < 50) {
+                await esperar(100);
+                tentativas++;
+            }
+            if (!window.XLSX) {
+                console.error('XLSX não carregou após 5 segundos');
+                mostraAlert('⚠️ Erro ao carregar biblioteca XLSX. Recarregue a página.', 'error');
+                return false;
+            }
+            console.log('✅ XLSX carregado');
+            return true;
+        }
+
         // ====== CONFIGURAÇÃO SUPABASE ======
         const SUPABASE_URL = 'https://zmgpumnvjyupvnwwgocr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptZ3B1bW52anl1cHZud3dnb2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcwODQ1NTUsImV4cCI6MzM2MjI0NDU1NX0.8vDmg6F7jG3Ohv8cI6MjEwNDQ4OdkONX0.KUp';
         
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabaseClient = null;
+        
+        // Aguardar Supabase carregar
+        async function inicializarSupabase() {
+            let tentativas = 0;
+            while (!window.supabase && tentativas < 50) {
+                await esperar(100);
+                tentativas++;
+            }
+            
+            if (!window.supabase) {
+                console.error('Supabase não carregou');
+                mostraAlert('⚠️ Erro ao carregar Supabase. Recarregue a página.', 'error');
+                return false;
+            }
+            
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('✅ Supabase inicializado');
+                return true;
+            } catch (error) {
+                console.error('Erro ao criar cliente Supabase:', error);
+                mostraAlert('⚠️ Erro ao conectar Supabase.', 'error');
+                return false;
+            }
+        }
 
         // ====== VERIFICAR CONEXÃO ======
-        window.addEventListener('load', async () => {
+        async function verificarConexao() {
             try {
+                if (!supabaseClient) {
+                    document.getElementById('statusConnection').innerHTML = '<div class="status-error">❌ Supabase não inicializado</div>';
+                    return;
+                }
+
                 const { data, error } = await supabaseClient
                     .from('candidatos')
                     .select('count', { count: 'exact', head: true });
                 
                 if (error) throw error;
                 document.getElementById('statusConnection').innerHTML = '<div class="status-connected">✅ Conectado ao Supabase com sucesso!</div>';
+                console.log('✅ Conexão Supabase OK');
             } catch (error) {
                 document.getElementById('statusConnection').innerHTML = `<div class="status-error">❌ Erro na conexão: ${error.message}</div>`;
+                console.error('❌ Erro de conexão:', error);
             }
-        });
+        }
 
         // ====== VARIÁVEIS GLOBAIS ======
         let excelData = null;
         let importStats = { total: 0, sucesso: 0, erro: 0 };
+
+        // ====== INICIALIZAR NA CARGA ======
+        window.addEventListener('load', async () => {
+            console.log('🔄 Inicializando...');
+            const xlsxOk = await esperarXLSX();
+            const supabaseOk = await inicializarSupabase();
+            
+            if (xlsxOk && supabaseOk) {
+                verificarConexao();
+                document.getElementById('downloadModelBtn').disabled = false;
+                document.getElementById('browseBtn').disabled = false;
+                console.log('✅ Pronto!');
+            } else {
+                document.getElementById('downloadModelBtn').disabled = true;
+                document.getElementById('browseBtn').disabled = true;
+                console.log('❌ Erro na inicialização');
+            }
+        });
 
         // ====== EVENT LISTENERS ======
         document.getElementById('browseBtn').addEventListener('click', () => {
@@ -205,76 +275,86 @@
 
         // ====== FUNÇÃO: BAIXAR MODELO ======
         function baixarPlanilhaModelo() {
-            const dados = [
-                {
-                    'NOME': 'João da Silva Santos',
-                    'CPF': '123.456.789-10',
-                    'RG': '1234567',
-                    'DATA DE NASC.': new Date(1990, 0, 15),
-                    'GENERO': 'M',
-                    'TELEFONE': '11 99999-9999',
-                    'E-MAIL': 'joao@email.com',
-                    'ENDEREÇO': 'Rua Exemplo',
-                    'N_RESIDENCIAL': '123',
-                    'BAIRRO': 'Centro',
-                    'CIDADE_RESIDENCIAL': 'Porto Grande',
-                    'Estado': 'AP',
-                    'CEP': '68997-000',
-                    'PROCESSO': 'ELETRICISTA DE RD PL',
-                    'PESO': 78.5,
-                    'ALTURA': 1.75,
-                    'FILHO': 'SIM',
-                    'QTD_FILHO': 2
-                },
-                {
-                    'NOME': 'Ana Paula Oliveira',
-                    'CPF': '987.654.321-05',
-                    'RG': '7654321',
-                    'DATA DE NASC.': new Date(1988, 5, 22),
-                    'GENERO': 'F',
-                    'TELEFONE': '21 98888-8888',
-                    'E-MAIL': 'ana@email.com',
-                    'ENDEREÇO': 'Avenida Central',
-                    'N_RESIDENCIAL': '456',
-                    'BAIRRO': 'Aeroporto',
-                    'CIDADE_RESIDENCIAL': 'Laranjal do Jari',
-                    'Estado': 'AP',
-                    'CEP': '68920-000',
-                    'PROCESSO': 'ELETRICISTA DE RD SR',
-                    'PESO': 65.0,
-                    'ALTURA': 1.68,
-                    'FILHO': 'NÃO',
-                    'QTD_FILHO': 0
-                },
-                {
-                    'NOME': 'Carlos Eduardo Costa',
-                    'CPF': '456.789.123-45',
-                    'RG': '4567890',
-                    'DATA DE NASC.': new Date(1992, 11, 8),
-                    'GENERO': 'M',
-                    'TELEFONE': '85 97777-7777',
-                    'E-MAIL': 'carlos@email.com',
-                    'ENDEREÇO': 'Rua das Flores',
-                    'N_RESIDENCIAL': '789',
-                    'BAIRRO': 'Castanheira',
-                    'CIDADE_RESIDENCIAL': 'Ferreira Gomes',
-                    'Estado': 'AP',
-                    'CEP': '68915-000',
-                    'PROCESSO': 'ELETRICISTA DE RD JR',
-                    'PESO': 82.0,
-                    'ALTURA': 1.80,
-                    'FILHO': 'SIM',
-                    'QTD_FILHO': 1
+            try {
+                if (!window.XLSX) {
+                    mostraAlert('❌ XLSX ainda não carregou. Aguarde...', 'error');
+                    return;
                 }
-            ];
 
-            const ws = XLSX.utils.json_to_sheet(dados);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'BANCO DE DADOS');
-            ws['!cols'] = Array(Object.keys(dados[0]).length).fill({ wch: 15 });
+                const dados = [
+                    {
+                        'NOME': 'João da Silva Santos',
+                        'CPF': '123.456.789-10',
+                        'RG': '1234567',
+                        'DATA DE NASC.': '15/01/1990',
+                        'GENERO': 'M',
+                        'TELEFONE': '11 99999-9999',
+                        'E-MAIL': 'joao@email.com',
+                        'ENDEREÇO': 'Rua Exemplo',
+                        'N_RESIDENCIAL': '123',
+                        'BAIRRO': 'Centro',
+                        'CIDADE_RESIDENCIAL': 'Porto Grande',
+                        'Estado': 'AP',
+                        'CEP': '68997-000',
+                        'PROCESSO': 'ELETRICISTA DE RD PL',
+                        'PESO': 78.5,
+                        'ALTURA': 1.75,
+                        'FILHO': 'SIM',
+                        'QTD_FILHO': 2
+                    },
+                    {
+                        'NOME': 'Ana Paula Oliveira',
+                        'CPF': '987.654.321-05',
+                        'RG': '7654321',
+                        'DATA DE NASC.': '22/06/1988',
+                        'GENERO': 'F',
+                        'TELEFONE': '21 98888-8888',
+                        'E-MAIL': 'ana@email.com',
+                        'ENDEREÇO': 'Avenida Central',
+                        'N_RESIDENCIAL': '456',
+                        'BAIRRO': 'Aeroporto',
+                        'CIDADE_RESIDENCIAL': 'Laranjal do Jari',
+                        'Estado': 'AP',
+                        'CEP': '68920-000',
+                        'PROCESSO': 'ELETRICISTA DE RD SR',
+                        'PESO': 65.0,
+                        'ALTURA': 1.68,
+                        'FILHO': 'NÃO',
+                        'QTD_FILHO': 0
+                    },
+                    {
+                        'NOME': 'Carlos Eduardo Costa',
+                        'CPF': '456.789.123-45',
+                        'RG': '4567890',
+                        'DATA DE NASC.': '08/12/1992',
+                        'GENERO': 'M',
+                        'TELEFONE': '85 97777-7777',
+                        'E-MAIL': 'carlos@email.com',
+                        'ENDEREÇO': 'Rua das Flores',
+                        'N_RESIDENCIAL': '789',
+                        'BAIRRO': 'Castanheira',
+                        'CIDADE_RESIDENCIAL': 'Ferreira Gomes',
+                        'Estado': 'AP',
+                        'CEP': '68915-000',
+                        'PROCESSO': 'ELETRICISTA DE RD JR',
+                        'PESO': 82.0,
+                        'ALTURA': 1.80,
+                        'FILHO': 'SIM',
+                        'QTD_FILHO': 1
+                    }
+                ];
 
-            XLSX.writeFile(wb, `Modelo_Renaux_${Date.now()}.xlsx`);
-            mostraAlert('✅ Planilha modelo baixada com sucesso!', 'success');
+                const ws = window.XLSX.utils.json_to_sheet(dados);
+                const wb = window.XLSX.utils.book_new();
+                window.XLSX.utils.book_append_sheet(wb, ws, 'BANCO DE DADOS');
+                ws['!cols'] = Array(Object.keys(dados[0]).length).fill({ wch: 15 });
+
+                window.XLSX.writeFile(wb, `Modelo_Renaux_${Date.now()}.xlsx`);
+                mostraAlert('✅ Planilha modelo baixada com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro ao baixar modelo:', error);
+                mostraAlert(`❌ Erro: ${error.message}`, 'error');
+            }
         }
 
         // ====== FUNÇÃO: PROCESSAR ARQUIVO ======
@@ -284,11 +364,16 @@
                 return;
             }
 
+            if (!window.XLSX) {
+                mostraAlert('XLSX não carregou. Recarregue a página.', 'error');
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    const workbook = window.XLSX.read(e.target.result, { type: 'array' });
+                    const data = window.XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                     excelData = data;
                     mostrarPreview();
                     mostraAlert(`✅ ${data.length} registros carregados!`, 'success');
@@ -360,6 +445,11 @@
 
         // ====== FUNÇÃO: IMPORTAR ======
         async function importarDados() {
+            if (!supabaseClient) {
+                mostraAlert('❌ Supabase não conectado', 'error');
+                return;
+            }
+
             document.getElementById('previewSection').classList.add('hidden');
             document.getElementById('progressSection').classList.remove('hidden');
 
